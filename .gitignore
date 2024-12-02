@@ -1,0 +1,7 @@
+## datasets
+/data/*
+!/data/.gitkeep
+
+## environment packages
+/venv/*
+!/venv/.gitkeep
