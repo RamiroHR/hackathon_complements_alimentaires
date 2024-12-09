@@ -1,10 +1,11 @@
 ## ignore every dataset in folder and subfolders
-/data/*
+/data/raw/*
+/data/transformed/*
 
-# exclude the gitkeep file to keep the directory structure
+# Exclude .gitkeep files to preserve directory structure
 !/data/.gitkeep
 !/data/raw/.gitkeep
-!/data/trasnformed/.gitkeep
+!/data/transformed/.gitkeep
 
 ## ignore installed environment packages but keep directory structure 
 /venv/*
