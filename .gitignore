@@ -1,7 +1,11 @@
-## datasets
+## ignore every dataset in folder and subfolders
 /data/*
-!/data/.gitkeep
 
-## environment packages
+# exclude the gitkeep file to keep the directory structure
+!/data/.gitkeep
+!/data/raw/.gitkeep
+!/data/trasnformed/.gitkeep
+
+## ignore installed environment packages but keep directory structure 
 /venv/*
 !/venv/.gitkeep
