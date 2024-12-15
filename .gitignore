@@ -10,3 +10,6 @@
 ## ignore installed environment packages but keep directory structure 
 /venv/*
 !/venv/.gitkeep
+
+## ignore test notebooks
+test.ipynb

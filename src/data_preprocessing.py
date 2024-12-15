@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def display_missing_values_counts(df, normalized = False):
     title = '\n Missing Values per Column' + (' %' if normalized  else '')
     dashline = '\n'+'-'*len(title)
@@ -12,6 +13,7 @@ def display_missing_values_counts(df, normalized = False):
     return df.isna().sum() // normalization_factor
 
 
+
 def display_duplicates_count(df):
     title = '\n Duplicated Entries'
     dashline = '\n'+'-'*len(title)
@@ -19,43 +21,54 @@ def display_duplicates_count(df):
     print(dashline, 
           title + ': ' + str(df.duplicated().sum()), 
           dashline)
-    
-def display_duplicated_example(df, example):
-    
-    duplicated_rows = df[df.duplicated()].index
-    duplicated_nomC = df[df.duplicated()].loc[:,'NomCommercial'].values
-    
-    # return df.loc[duplicated_rows[example],:]
-    return df.loc[:, df['NomCommercial'] == duplicated_nomC[example]]
-    # return duplicated_nomC[1]
+
     
 
 
 def display_example(df, example_type, unpack=True):
     
     if example_type == 'duplicated_but_with_typo':
-        cond1 = df['NomCommercial'] == 'CITRULLINE MALATE'
-        cond2 = df['FormeGalenique'] == 'Poudre'
-        cond3 = df['ResponsableEtiquetage'] == 'INDIEX SPORT NUTRITION SPAIN SL'
+        cond1 = df['NomCommercial'] == 'citrulline malate'#'CITRULLINE MALATE'.lower()
+        cond2 = df['FormeGalenique'] == 'poudre'#'Poudre'.lower()
+        cond3 = df['ResponsableEtiquetage'] == 'indiex sport nutrition spain sl'#'INDIEX SPORT NUTRITION SPAIN SL'.lower()
         to_drop = ['ModeEmploi', 'Gamme', 'population_a_risques', 'plantes', 'familles_plantes', 'parties_plantes', 'objectif_effet']
         display(df[cond1 & cond2 & cond3].drop(to_drop, axis=1))
 
     elif example_type == 'duplicated_unclear':
-        cond1 = df['NomCommercial']=='Beauté'
-        cond2 = df['FormeGalenique']=='Capsule'
-        cond3 = df['autres_ingredients']== 'gélatine,Eau purifiée,E422'
+        cond1 = df['NomCommercial']=='Beauté'.lower()
+        cond2 = df['FormeGalenique']=='Capsule'.lower()
+        cond3 = df['autres_ingredients']== 'gélatine,Eau purifiée,E422'.lower()
         display(df[cond1 & cond2 & cond3])
         
-    elif example_type == 'duplicated_alarming':
-        cond1 = df['NomCommercial']=='NEUROBOOST'
-        cond2 = df['FormeGalenique']=='Gélule'
-        display(df[cond1 & cond2])
 
-        if unpack:
-            for col in df.columns:
-                print(f"\n\n{col}:")
-                for index, row in df[cond1 & cond2].iterrows():
-                        print(f"\t{index}: {row[col]}")
+
+def display_duplicated_versions(df, to_exclude, index, unpack = True):
+    '''
+    Display all duplicated versions of the example row indicated by the index.
+    '''
+    # Drop columns to exclude
+    df_subset = df.drop(to_exclude, axis=1)
+    
+    # Extract the example row as a Series
+    example = df_subset.loc[index]
+    
+    # Ensure type consistency
+    # mask = (df_subset == example).all(axis=1)                        # considers that Nan != Nan (wrong)
+    mask = df_subset.apply(lambda row: row.equals(example), axis=1)    # handles well Nan == Nan
+    
+    # Count and display matching rows
+    print(f"Number of matches: {mask.sum()}")
+    
+    # Retrieve and return matching rows from the original DataFrame
+    matching_rows = df[mask]
+    
+    if unpack:
+        for col in to_exclude:
+            print(f"\n\n{col}:")
+            for idx, row in matching_rows.iterrows():
+                    print(f"\t{idx}: {row[col]}")
+    
+    return matching_rows
 
 
     
