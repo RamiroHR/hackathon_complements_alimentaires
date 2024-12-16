@@ -14,5 +14,9 @@
 ## ignore test notebooks
 test.ipynb
 
+## ensure that Git ignores all .ipynb_checkpoints directories in your project.
+.ipynb_checkpoints/
+
 ## prevent Git from tracking any __pycache__ folder, no matter where they appear in your project directory.
 __pycache__/
+
