@@ -13,3 +13,6 @@
 
 ## ignore test notebooks
 test.ipynb
+
+## prevent Git from tracking any __pycache__ folder, no matter where they appear in your project directory.
+__pycache__/
