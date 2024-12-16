@@ -19,6 +19,8 @@ def apply_formatings(df, format):
     if format['replace_commas_in_parenthesis']:
         df = df.map(replace_commas_in_parentheses)
     
+    if format['replace_ampersands']:
+        df['plantes'] = df['plantes'].map(replace_ampersands)
     
     return df
 
@@ -81,6 +83,18 @@ def replace_commas_in_parentheses(val):
 
 
 
+def replace_ampersands(val):
+    '''
+    Use a regular expression to find '&amp;' pattern and replace with '&' symbol
+    '''
+    if isinstance(val, str):
+        return re.sub(r'&amp;', '&', val)
+    return val
+
+
+
+#############################################################################################################
+
 
 def clean_data(df, steps):
     '''
@@ -92,20 +106,143 @@ def clean_data(df, steps):
         df.drop_duplicates(inplace = True)
     
 
+    return df
+
+
+#############################################################################################################
+
+
+
+## Function to add entries to the lookup dictionary with multiple substances per key
+def add_to_lookup(lookup, key, value):
+    """
+    Add substances associated with a key to the lookup dictionary. 
+    If `value` contains a comma-separated list of substances, split and add them individually.
+    """
+    # Ensure the value is split into separate substances if comma-separated
+    substances = [v.strip() for v in value.split(',')] if isinstance(value, str) else []
+    
+    if key in lookup:
+        # Add each substance to the list if not already present
+        for substance in substances:
+            if substance not in lookup[key]:
+                lookup[key].append(substance)
+    else:
+        # Initialize the key with the list of substances
+        lookup[key] = substances
+
+
+## Function to create a lookup dictionary using main names and synnonym names
+def create_lookup(df):
+    lookup_dict = {}
+    
+    # Populate the dictionary with main names : substances
+    for _, row in df.iterrows():
+        add_to_lookup(lookup_dict, row['name'], row['substances'])
+    
+    # Populate the dictionary with synonyms names : susbtances
+    for _, row in df.iterrows():
+        if pd.notna(row['synonyms']):  # Skip NaNs
+            synonyms = [syn.strip() for syn in row['synonyms'].split(',')]  # Split and clean
+            for synonym in synonyms:
+                add_to_lookup(lookup_dict, synonym, row['substances'])
+
+    return lookup_dict
+
+
+
+def gather_substances(row, plant_substances, ingredient_substances):
+
+    # Get list of plants
+    ls_plants = [item.strip() for item in str(row['plantes']).split(',') if item.strip() and item != 'nan']
+    
+    # Get list of other ingredients
+    ls_ingredients = [item.strip() for item in str(row['autres_ingredients']).split(',') if item.strip() and item != 'nan']
+    
+    # Get all substances from plants and ingredients
+    ls_substances = []
+    for plant in ls_plants:
+        if plant in plant_substances:
+            # ls_substances.extend(str(plant_substances[plant]).split(','))
+            ls_substances.extend(plant_substances[plant])
+    
+    for ingredient in ls_ingredients:
+        if ingredient in ingredient_substances:
+            # ls_substances.extend(str(ingredient_substances[ingredient]).split(','))
+            ls_substances.extend(ingredient_substances[ingredient])
+    
+    # Clean (spaces), remove repeated substances and return as a joined string
+    ls_substances = list(set([item.strip() for item in ls_substances if item and item != 'nan']))
+
+    return ','.join(ls_substances) if ls_substances else np.nan
+
+
+
+def join_columns(row, subset):
+    to_join = [str(row[col]) for col in subset]
+    joined_str = ' - '.join(to_join)
+    return joined_str
+
+
+def verify_bio_label(df, subset):
+
+    # join columns into a single auxiliar str column
+    df['Nom_Marque_Gamme'] = df.apply(join_columns, axis=1, subset=subset)
+
+    # Define a regex pattern for 'bio' keywords
+    bio_labels = r"\b(bio|biologique)\b"      # Match single labels (\b is word boundary)
+    
+    # Apply regex to create a column to label 'bio' products
+    df['is_bio'] = df['Nom_Marque_Gamme'].str.contains(
+                                                bio_labels,  # Use the regex pattern
+                                                flags=re.IGNORECASE,  # Case insensitive matching
+                                                na=False  # Handle NaN gracefully
+                                                )    
+    
+    df.drop('Nom_Marque_Gamme', axis=1, inplace=True)
+
+    return df
+
+
+def verify_quantity_in_name(df):
+
+    # Match if 
+    quantity_pattern = r"\b\d+([.,]?\d+)?\s?(mg|g|kg|µg|mcg|µl|ml|l|oz|lb)\b"
+    
+    # Apply regex to create a column to label 'bio' products
+    df['has_quantity'] = df['NomCommercial'].str.contains(
+                                                quantity_pattern,  # Use the regex pattern
+                                                flags=re.IGNORECASE,  # Case insensitive matching
+                                                na=False  # Handle NaN gracefully
+                                                )
     
     return df
 
 
+def save_dataset(df, path, filename, format):
 
+    if format == 'csv':
+        df.to_csv(path+filename+'.csv', index=False)
+        print(f"File saved as '{path + filename +'.csv'}'")
 
+    if format == 'json':
+        ## lower case column names
+        new_col_names = [name.lower() for name in df.columns]
+        df_json = df.copy()
+        df_json.columns = new_col_names
+        
+        df_json.to_json(path+filename+'.json', orient = 'split', compression = 'infer', index = 'false')
+        print(f"File saved as '{path + filename +'.json'}'")
 
+      
+def reload_dataset(path, filename):
 
+    if filename.split('.')[1]=='csv':
+        df = pd.read_csv(path+filename, sep=',')
+        print(f"Re-Loaded from '{path + filename}'")
 
+    if filename.split('.')[1]=='json':
+        df = pd.read_json(path+filename, orient ='split', compression = 'infer')
+        print(f"Re-Loaded from '{path + filename}'")
 
-
-
-
-
-
-
-
+    return df
