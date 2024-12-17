@@ -2,25 +2,30 @@ import pandas as pd
 import numpy as np
 import re
 
-def apply_formatings(df, format):
+def apply_formatings(df, format, verbose = False):
     '''
     format dataframe df by applying the formatting steps in formating dict
     '''
     
     if format['lower_case']:     
         df = df.apply(lambda x: x.str.lower() if(x.dtype == 'object') else x)
+        if verbose: print("- Lower case the entire dataframe")
     
     if format['remove_redundant_information']:
         df = df.map(remove_redundant_information)
+        if verbose: print("- Removed redundant information")
     
     if format['replace_decimal_point']:
         df = df.map(replace_decimal_point)
+        if verbose: print("- Replaced decimal commas by points")
 
     if format['replace_commas_in_parenthesis']:
         df = df.map(replace_commas_in_parentheses)
-    
+        if verbose: print("- Replaced commas inside parenthesis by semicolons")
+        
     if format['replace_ampersands']:
-        df['plantes'] = df['plantes'].map(replace_ampersands)
+        df = df.map(replace_ampersands)
+        if verbose: print("- Correctly encode ampersand symbols")
     
     return df
 
@@ -96,7 +101,7 @@ def replace_ampersands(val):
 #############################################################################################################
 
 
-def clean_data(df, steps):
+def clean_data(df, steps, verbose = True):
     '''
     Apply the step defined in the step dictionary to the dataset.
     Return the cleaned dataset.
@@ -104,12 +109,46 @@ def clean_data(df, steps):
     
     if steps['drop_duplicates']:
         df.drop_duplicates(inplace = True)
+        if verbose: print("- Simple duplicates removed")
     
 
     return df
 
 
 #############################################################################################################
+
+
+def enrich_data(df, steps, verbose = True):
+    '''
+    Pass a dictionary containing all datasets: df.
+    Enrich dataset with each procedure mentioned in the step dictionary.
+    Return the transformed datasets.
+    '''
+    
+    if steps['gather_substances']:
+        # Lookup dictionaries for plant:substances and plant_synonyms:substances
+        plant_substances = create_lookup(df['plantes'])
+
+        # Lookup dictionary from ingredients dataset
+        ingredient_substances = create_lookup(df['ingredients'])
+
+        # Apply function to gather all substances for each product
+        df['complements']['substances'] = df['complements'].apply(gather_substances, axis = 1, 
+                                                            plant_substances = plant_substances, 
+                                                            ingredient_substances = ingredient_substances)
+    
+        if verbose: print("'substances' feature added")
+    
+    if steps['check_bio_label']:
+        subset = ['NomCommercial', 'Marque', 'Gamme', 'Aromes']
+        df['complements'] = verify_bio_label(df['complements'], subset)
+        if verbose: print("'is_bio' feature created")
+    
+    if steps['check_quantity_mention']:
+        df['complements'] = verify_quantity_in_name(df['complements'])
+        if verbose: print("'has_quanity' feature added")
+    
+    return df['complements']
 
 
 
